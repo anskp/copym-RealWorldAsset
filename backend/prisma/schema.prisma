@@ -1,0 +1,147 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - base for all users
+model User {
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  password         String?
+  first_name       String?
+  last_name        String?
+  role             Role      @default(USER)
+  is_active        Boolean   @default(true)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  last_login_at    DateTime?
+  email_verified   Boolean   @default(false)
+  verification_token String?
+  reset_token      String?
+  reset_token_expires DateTime?
+  oauth_provider   String?
+  oauth_id         String?
+
+  // Relations
+  investor         Investor?
+  issuer           Issuer?
+  admin            Admin?
+  wallet           Wallet[]
+}
+
+// Roles for users
+enum Role {
+  USER
+  INVESTOR
+  ISSUER
+  ADMIN
+}
+
+// Investor model - for users investing in assets
+model Investor {
+  id            Int       @id @default(autoincrement())
+  user_id       Int       @unique
+  kyc_status    KycStatus @default(PENDING)
+  kyc_completed Boolean   @default(false)
+  country       String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relations
+  user          User      @relation(fields: [user_id], references: [id])
+}
+
+// KYC status enum
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Issuer model - for users issuing assets
+model Issuer {
+  id                  Int       @id @default(autoincrement())
+  user_id             Int       @unique
+  company_name        String
+  registration_number String?
+  country             String?
+  address             String?
+  website             String?
+  setup_completed     Boolean   @default(false)
+  setup_completed_at  DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  // Relations
+  user                User      @relation(fields: [user_id], references: [id])
+  credentials         IssuerCredential[]
+}
+
+// Admin model - for platform administrators
+model Admin {
+  id         Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  level      Int      @default(1)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user       User     @relation(fields: [user_id], references: [id])
+}
+
+// Wallet model - for user wallets
+model Wallet {
+  id                       Int      @id @default(autoincrement())
+  type                     String   // ISSUER, INVESTOR, etc.
+  chain                    String   // ethereum, polygon, etc.
+  address                  String?
+  is_active                Boolean  @default(true)
+  is_custodial             Boolean  @default(true)
+  user_id                  Int
+  issuer_id                Int?
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
+  fireblocks_vault_id      String?
+  fireblocks_vault_account_id String?
+  fireblocks_asset_id      String?
+  deposit_address          String?
+
+  // Relations
+  user                     User     @relation(fields: [user_id], references: [id])
+}
+
+// Issuer Credential model - for verifiable credentials
+model IssuerCredential {
+  id                Int      @id @default(autoincrement())
+  issuer_id         Int
+  type              CredentialType
+  name              String
+  description       String?
+  metadata          Json?
+  content           Json
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  nft_contract_address String?
+  nft_token_id      String?
+  nft_chain         String?
+
+  // Relations
+  issuer            Issuer   @relation(fields: [issuer_id], references: [id])
+}
+
+// Credential Type enum
+enum CredentialType {
+  BUSINESS_REGISTRATION
+  ACCREDITATION
+  REGULATORY_LICENSE
+  TAX_CERTIFICATE
+  CUSTOM
+}
