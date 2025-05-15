@@ -1,0 +1,29 @@
+{
+  "name": "copym-rwa-platform",
+  "version": "1.0.0",
+  "description": "Real World Asset tokenization platform",
+  "scripts": {
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anskp/copym-RealWorldAsset.git"
+  },
+  "keywords": [
+    "blockchain",
+    "tokenization",
+    "RWA",
+    "real-world-assets",
+    "fireblocks"
+  ],
+  "author": "Copym",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
