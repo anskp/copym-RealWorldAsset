@@ -1,43 +1,31 @@
-# Copym RWA Backend
+# express-back
 
-This is the backend service for the Copym Real World Asset tokenization platform.
+# Backend Service
 
-## Features
+## Recent Fixes
 
-- RESTful API for asset management
-- Fireblocks integration for secure wallet management
-- Authentication and authorization
-- KYC/AML integration with SumSub
-- Database integration with PostgreSQL using Prisma ORM
+### 2025-05-14: Fixed External ID Column Issues
 
-## Setup
+We fixed an issue where the application was failing due to a mismatch between the Prisma schema and the database. 
+The schema includes an `external_id` column in the `wallet` table that doesn't exist in the actual database.
 
-1. Install dependencies
-   ```
-   npm install
-   ```
+**Fix applied:** 
+- Modified all Prisma queries that access the wallet table to explicitly specify needed fields rather than returning all fields
+- Created a script (`fix-wallet-queries.js`) to automatically apply these fixes across multiple files
+- Added error handling to better catch and report any similar issues in the future
 
-2. Set up environment variables
-   ```
-   cp ../.env.example .env
-   ```
-   
-3. Set up the database
-   ```
-   npx prisma migrate dev
-   ```
+**Affected files:**
+- services/issuer/fireblocks.service.js
+- services/issuer/issuer.service.js
+- services/webhooks/webhooks.service.js
+- services/wallet/wallet.service.js
+- services/crossmint/crossmint-webhooks.service.js
+- services/issuer-vc/issuer-vc.service.js
+- services/admin/admin.service.js
+- utils/crossmintUtils.js
+- utils/didUtils.js
+- utils/walletMigration.js
 
-4. Start the development server
-   ```
-   npm run dev
-   ```
+**Root cause:** Schema model includes fields that aren't in the database, causing Prisma validation errors.
 
-## API Documentation
-
-API endpoints are organized by domain:
-
-- `/api/auth` - Authentication and user management
-- `/api/issuer` - Issuer-related operations
-- `/api/investor` - Investor-related operations
-- `/api/fireblocks` - Fireblocks integrations
-- `/api/wallet` - Wallet management
+## Getting Started

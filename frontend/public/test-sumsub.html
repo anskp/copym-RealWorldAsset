@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sumsub Test</title>
+  <script src="https://static.sumsub.com/idensic/static/sns-websdk-builder.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #sumsub-websdk-container {
+      height: 600px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 10px 0;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    #error-container {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sumsub WebSDK Test</h1>
+  <p>This is a standalone test page for Sumsub WebSDK integration.</p>
+  
+  <button id="start-button">Start Verification</button>
+  <div id="error-container"></div>
+  <div id="sumsub-websdk-container"></div>
+  
+  <script>
+    // Function to get a token from your backend
+    async function getToken() {
+      try {
+        console.log('Getting token from backend...');
+        const response = await fetch('/api/sumsub/token?userId=test-user-' + Date.now());
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to get token');
+        }
+        
+        console.log('Token received:', data.token.substring(0, 10) + '...');
+        return data.token;
+      } catch (error) {
+        console.error('Error getting token:', error);
+        document.getElementById('error-container').textContent = 'Error: ' + error.message;
+        return null;
+      }
+    }
+    
+    // Function to launch the Sumsub WebSDK
+    async function launchWebSdk() {
+      try {
+        document.getElementById('error-container').textContent = '';
+        const accessToken = await getToken();
+        
+        if (!accessToken) {
+          throw new Error('Failed to get access token');
+        }
+        
+        console.log('Initializing Sumsub SDK...');
+        
+        let snsWebSdkInstance = window.snsWebSdk
+          .init(accessToken, async () => {
+            // Token refresh callback
+            console.log('Token expired, getting a new one...');
+            const newToken = await getToken();
+            if (!newToken) {
+              throw new Error('Failed to refresh token');
+            }
+            return newToken;
+          })
+          .withConf({
+            lang: 'en'
+          })
+          .withOptions({ 
+            addViewportTag: false, 
+            adaptIframeHeight: true 
+          })
+          .on('idCheck.stepCompleted', (payload) => {
+            console.log('Step completed:', payload);
+          })
+          .on('idCheck.onError', (error) => {
+            console.error('Sumsub error:', error);
+            document.getElementById('error-container').textContent = 'Sumsub error: ' + error.message;
+          })
+          .onMessage((type, payload) => {
+            console.log('Message from Sumsub:', type, payload);
+          })
+          .build();
+        
+        console.log('Launching Sumsub WebSDK...');
+        snsWebSdkInstance.launch('#sumsub-websdk-container');
+        
+      } catch (error) {
+        console.error('Error launching Sumsub WebSDK:', error);
+        document.getElementById('error-container').textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    // Add event listener to the start button
+    document.getElementById('start-button').addEventListener('click', launchWebSdk);
+  </script>
+</body>
+</html> 

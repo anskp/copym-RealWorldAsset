@@ -26,4 +26,4 @@ A platform for tokenizing real-world assets on blockchain networks.
 Create a `.env` file based on `.env.example` with proper credentials for:
 - Fireblocks API
 - Database connections
-- Other third-party services
+- Other third-party services 

@@ -81,4 +81,4 @@ The integration uses a service-oriented architecture:
 1. Private keys are stored securely and never exposed in the code
 2. API secrets are stored in environment variables
 3. JWT tokens are short-lived (55 seconds)
-4. All API calls use HTTPS
+4. All API calls use HTTPS 

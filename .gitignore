@@ -38,4 +38,4 @@ coverage/
 *.pem
 *.key
 *.cert
-*.crt
+*.crt 

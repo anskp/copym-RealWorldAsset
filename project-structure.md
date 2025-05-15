@@ -60,4 +60,4 @@
 3. **Investor Interface**
    - Token purchase and management
    - KYC/AML integration with SumSub
-   - Wallet connection and management
+   - Wallet connection and management 

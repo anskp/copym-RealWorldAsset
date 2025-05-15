@@ -2,129 +2,127 @@ const jwt = require('jsonwebtoken');
 const { prisma } = require('../config/prisma');
 
 /**
- * Authentication middleware
+ * Middleware to verify if user is authenticated
  */
-const authMiddleware = {
-  /**
-   * Check if the user is authenticated
-   * @param {object} req - Express request object
-   * @param {object} res - Express response object
-   * @param {function} next - Express next middleware function
-   */
-  isAuthenticated: async (req, res, next) => {
+const isAuthenticated = async (req, res, next) => {
+  try {
+    // Check if user is already authenticated by Passport
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      return next();
+    }
+    
+    // Check for JWT token in Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Access denied. No token provided.' 
+      });
+    }
+    
+    const token = authHeader.substring(7);
+    
     try {
-      // Get token from header
-      const token = req.header('Authorization')?.replace('Bearer ', '');
-      
-      if (!token) {
-        return res.status(401).json({ message: 'No token, authorization denied' });
+      // Verify the token
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        console.warn('JWT_SECRET not set in environment. Using default secret in auth middleware.');
       }
+      const decoded = jwt.verify(token, secret || 'AKLjhdftfyhgjbhvUGYIU878788yjhgvasjRES');
       
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Find user
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          is_active: true
-        }
+      // Find the user
+      const user = await prisma.users.findUnique({
+        where: { id: decoded.userId },
+        include: { userrole: true }
       });
       
       if (!user) {
-        return res.status(401).json({ message: 'User not found' });
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Invalid token. User not found.' 
+        });
       }
       
-      if (!user.is_active) {
-        return res.status(401).json({ message: 'User account is inactive' });
-      }
-      
-      // Add user to request object
+      // Attach user to request
       req.user = user;
-      
       next();
     } catch (error) {
-      console.error('Auth middleware error:', error);
-      res.status(401).json({ message: 'Token is not valid' });
-    }
-  },
-
-  /**
-   * Check if the user has admin role
-   * @param {object} req - Express request object
-   * @param {object} res - Express response object
-   * @param {function} next - Express next middleware function
-   */
-  isAdmin: (req, res, next) => {
-    if (req.user && req.user.role === 'ADMIN') {
-      next();
-    } else {
-      res.status(403).json({ message: 'Access denied. Admin role required' });
-    }
-  },
-
-  /**
-   * Check if the user has issuer role
-   * @param {object} req - Express request object
-   * @param {object} res - Express response object
-   * @param {function} next - Express next middleware function
-   */
-  isIssuer: async (req, res, next) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: 'User not authenticated' });
-      }
-
-      // Check if user has issuer role
-      const issuer = await prisma.issuer.findFirst({
-        where: { user_id: req.user.id }
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid token.' 
       });
-
-      if (!issuer) {
-        return res.status(403).json({ message: 'Access denied. Issuer role required' });
-      }
-
-      // Add issuer data to request
-      req.issuer = issuer;
-      next();
-    } catch (error) {
-      console.error('Issuer auth middleware error:', error);
-      res.status(500).json({ message: 'Server error in authorization' });
     }
-  },
-
-  /**
-   * Check if the user has investor role
-   * @param {object} req - Express request object
-   * @param {object} res - Express response object
-   * @param {function} next - Express next middleware function
-   */
-  isInvestor: async (req, res, next) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: 'User not authenticated' });
-      }
-
-      // Check if user has investor role
-      const investor = await prisma.investor.findFirst({
-        where: { user_id: req.user.id }
-      });
-
-      if (!investor) {
-        return res.status(403).json({ message: 'Access denied. Investor role required' });
-      }
-
-      // Add investor data to request
-      req.investor = investor;
-      next();
-    } catch (error) {
-      console.error('Investor auth middleware error:', error);
-      res.status(500).json({ message: 'Server error in authorization' });
-    }
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
   }
 };
 
-module.exports = authMiddleware;
+/**
+ * Middleware to verify if user has a specific role
+ */
+const hasRole = (role) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication required' 
+      });
+    }
+    
+    const userRoles = req.user.userrole.map(r => r.role);
+    
+    if (!userRoles.includes(role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. Required role: ' + role 
+      });
+    }
+    
+    next();
+  };
+};
+
+/**
+ * Middleware to verify if user is an issuer
+ */
+const isIssuer = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication required' 
+      });
+    }
+    
+    const issuer = await prisma.issuer.findUnique({
+      where: { user_id: req.user.id }
+    });
+    
+    if (!issuer) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. User is not an issuer.' 
+      });
+    }
+    
+    req.issuer = issuer;
+    next();
+  } catch (error) {
+    console.error('isIssuer middleware error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
+  }
+};
+
+module.exports = {
+  isAuthenticated,
+  hasRole,
+  isIssuer
+}; 
